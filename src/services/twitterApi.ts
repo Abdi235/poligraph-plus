@@ -6,6 +6,7 @@ interface TwitterApiUser {
   name: string;
   username: string;
   profile_image_url?: string;
+  location?: string; // User's profile location (free-form text)
   // Add other user fields as needed: verified, public_metrics, etc.
 }
 
@@ -135,13 +136,15 @@ class TwitterApiService {
     return tweets.map(tweet => ({
       id: tweet.id,
       text: tweet.text,
-      user: tweet.author_id ? userMap.get(tweet.author_id)?.username : 'Unknown User',
-      name: tweet.author_id ? userMap.get(tweet.author_id)?.name : 'Unknown User',
+      user: tweet.author_id ? userMap.get(tweet.author_id)?.username || 'Unknown User' : 'Unknown User',
+      name: tweet.author_id ? userMap.get(tweet.author_id)?.name || 'Unknown User' : 'Unknown User',
       profileImageUrl: tweet.author_id ? userMap.get(tweet.author_id)?.profile_image_url : undefined,
       timestamp: tweet.created_at || new Date().toISOString(),
       source: 'Twitter',
+      rawGeo: tweet.geo, // Pass the raw geo object
+      userLocationString: tweet.author_id ? userMap.get(tweet.author_id)?.location : undefined, // Pass user's location string
       // Add any other relevant fields from the tweet or expansions
-      // e.g., public_metrics, geo data if available and processed
+      // e.g., public_metrics
     }));
   }
 }
@@ -151,11 +154,13 @@ export interface ProcessedTweet {
   id: string;
   text: string;
   user: string; // username
-  name: string; // display name
+  name:string; // display name
   profileImageUrl?: string;
   timestamp: string;
   source: 'Twitter';
-  // Potentially add public_metrics, geo, etc.
+  rawGeo?: TwitterApiTweetGeo; // Pass raw geo object from tweet
+  userLocationString?: string; // Pass user's profile location string
+  // Potentially add public_metrics, etc.
 }
 
 

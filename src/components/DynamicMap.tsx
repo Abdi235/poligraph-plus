@@ -6,19 +6,13 @@ import React from 'react';
 import { MapContainer, TileLayer, Popup, CircleMarker } from 'react-leaflet';
 
 
-// Mock sentiment data structure for map points
-interface MapSentimentPoint {
-  id: string;
-  topic?: string; // Optional: if data is pre-filtered
-  region: string; // For display
-  sentiment: number;
-  coordinates: [number, number]; // [latitude, longitude]
-  text?: string; // Sample text for popup
-}
+import { MapPoint } from './InteractiveMap';
+// import HeatmapLayer from 'react-leaflet-heatmap-layer-v3'; // Would import if compatible
+// import 'leaflet.heat'; // Peer dependency for the heatmap layer
 
 interface DynamicMapProps {
-  data: MapSentimentPoint[]; // Data points to visualize
-  // selectedTopic?: string; // Could be used for filtering if data isn't pre-filtered
+  points: MapPoint[];
+  heatmapData?: [number, number, number][] | null; // Optional: [lat, lng, intensity][]
 }
 
 // Fix for default icon issue with Webpack
@@ -33,16 +27,26 @@ interface DynamicMapProps {
 // For now, relying on default CSS-based icons or simple CircleMarkers.
 
 
-const DynamicMap: React.FC<DynamicMapProps> = ({ data }) => {
+const DynamicMap: React.FC<DynamicMapProps> = ({ points, heatmapData }) => {
   const defaultPosition: [number, number] = [20, 0]; // Default center of the map (e.g., world view)
   const defaultZoom = 2;
 
-  const getSentimentColor = (sentiment: number): string => {
-    if (sentiment > 0.5) return 'green'; // Strong positive
-    if (sentiment > 0.1) return 'lightgreen'; // Mild positive
-    if (sentiment < -0.5) return 'red'; // Strong negative
-    if (sentiment < -0.1) return 'pink'; // Mild negative
-    return 'gray'; // Neutral
+  // Heatmap Layer Configuration (would be used if HeatmapLayer component was imported and working)
+  // const heatmapOptions = {
+  //   radius: 20,
+  //   blur: 20,
+  //   maxZoom: 18,
+  //   gradient: { 0.1: 'blue', 0.3: 'lime', 0.5: 'yellow', 0.8: 'red' },
+  //   minOpacity: 0.3,
+  // };
+
+
+  const getSentimentColor = (sentimentScore: number): string => {
+    if (sentimentScore > 0.5) return 'green';
+    if (sentimentScore > 0.1) return 'lightgreen';
+    if (sentimentScore < -0.5) return 'red';
+    if (sentimentScore < -0.1) return 'pink';
+    return 'gray';
   };
 
 
@@ -52,21 +56,36 @@ const DynamicMap: React.FC<DynamicMapProps> = ({ data }) => {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {data.map(point => (
+      {/* Heatmap Layer would go here */}
+      {heatmapData && heatmapData.length > 0 && (
+        <>
+          {/* <HeatmapLayer
+            points={heatmapData}
+            longitudeExtractor={(m: any) => m[1]}
+            latitudeExtractor={(m: any) => m[0]}
+            intensityExtractor={(m: any) => m[2]}
+            {...heatmapOptions}
+          /> */}
+          <div style={{ position: 'absolute', top: '10px', left: '50px', zIndex: 1000, background: 'white', padding: '5px', borderRadius: '5px', border: '1px solid #ccc' }}>
+            Heatmap data prepared ({heatmapData.length} points). Layer component pending due to React version compatibility.
+          </div>
+        </>
+      )}
+      {points.map(point => (
         <CircleMarker
           key={point.id}
-          center={point.coordinates}
-          radius={8} // Adjust radius as needed
+          center={[point.latitude, point.longitude]} // Use new lat/lon fields
+          radius={8}
           pathOptions={{
-            color: getSentimentColor(point.sentiment),
-            fillColor: getSentimentColor(point.sentiment),
+            color: getSentimentColor(point.sentimentScore),
+            fillColor: getSentimentColor(point.sentimentScore),
             fillOpacity: 0.7
           }}
         >
           <Popup>
-            <strong>{point.region || 'Sentiment Point'}</strong><br />
-            Sentiment: {point.sentiment.toFixed(2)}<br />
-            {point.text && `Text: "${point.text.substring(0, 50)}..."`}
+            <strong>{point.locationDisplayName || 'Geocoded Location'}</strong><br />
+            Sentiment Score: {point.sentimentScore.toFixed(2)}<br />
+            Post: &quot;{point.displayText}&quot;
           </Popup>
         </CircleMarker>
       ))}

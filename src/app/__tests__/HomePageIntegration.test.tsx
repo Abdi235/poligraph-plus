@@ -47,25 +47,41 @@ jest.mock('@/services/spikeAlertService', () => ({
 
 const mockTweetData = {
   data: [
-    { id: '1', text: 'Test tweet for sports topic', author_id: 'user1', created_at: new Date().toISOString() },
-    { id: '2', text: 'Another sports related tweet', author_id: 'user2', created_at: new Date().toISOString() },
+    { id: '1', text: 'Test tweet for sports topic from NY', author_id: 'user1', created_at: new Date().toISOString(), geo: null }, // No direct geo
+    { id: '2', text: 'Another sports related tweet from London', author_id: 'user2', created_at: new Date().toISOString(), geo: null }, // No direct geo
   ],
   includes: {
     users: [
-      {id: 'user1', username: 'UserOne', name: 'User One', profile_image_url: 'http://example.com/img1.png'},
-      {id: 'user2', username: 'UserTwo', name: 'User Two', profile_image_url: 'http://example.com/img2.png'}
+      {id: 'user1', username: 'UserOne', name: 'User One', profile_image_url: 'http://example.com/img1.png', location: 'New York'},
+      {id: 'user2', username: 'UserTwo', name: 'User Two', profile_image_url: 'http://example.com/img2.png', location: 'London, UK'}
     ]
   }
 };
 
 const server = setupServer(
+  // Mock for Twitter search API
   http.get('/api/twitter/search', ({ request }) => {
     const url = new URL(request.url);
     const query = url.searchParams.get('q');
-    if (query?.toLowerCase().includes('sports')) { // Make it case-insensitive for robustness
+    if (query?.toLowerCase().includes('sports')) {
       return HttpResponse.json(mockTweetData);
     }
-    return HttpResponse.json({ data: [], includes: {users: []} });
+    // Add more specific handlers if other topics are tested with different mock data
+    return HttpResponse.json({ data: [], includes: { users: [] } });
+  }),
+  // Mock for Geocoding API
+  http.get('/api/geocode', ({ request }) => {
+    const url = new URL(request.url);
+    const locationQuery = url.searchParams.get('q');
+    // console.log('MSW intercepted /api/geocode with query:', locationQuery);
+    if (locationQuery?.toLowerCase().includes('new york')) {
+      return HttpResponse.json({ latitude: 40.7128, longitude: -74.0060, displayName: 'New York, NY, USA' });
+    }
+    if (locationQuery?.toLowerCase().includes('london')) {
+      return HttpResponse.json({ latitude: 51.5074, longitude: -0.1278, displayName: 'London, UK' });
+    }
+    // Default fallback for unmocked geocode queries
+    return HttpResponse.json({ error: 'Location not found' }, { status: 404 });
   })
 );
 

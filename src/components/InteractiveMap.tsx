@@ -1,125 +1,123 @@
-"use client"; // Keep this for the wrapper component as well
+"use client";
 
 import React, { useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { ProcessedPost } from '@/services/dataProcessor'; // Using actual processed data type
+import { ProcessedPost, SentimentResult } from '@/services/dataProcessor';
 
-// Mock coordinates for regions if not available in actual data
-const mockRegionCoordinates: { [key: string]: [number, number] } = {
-  'USA': [37.0902, -95.7129],
-  'Canada': [56.1304, -106.3468],
-  'UK': [55.3781, -3.4360],
-  'Germany': [51.1657, 10.4515],
-  'France': [46.6035, 1.8883],
-  'Japan': [36.2048, 138.2529],
-  'Australia': [ -25.2744, 133.7751],
-  'Brazil': [-14.2350, -51.9253],
-  // Add more regions as needed
-};
-
-
-// Define the props for InteractiveMap, which will now pass data to DynamicMap
+// Define the props for InteractiveMap
 interface InteractiveMapProps {
-  // Data will come from ProcessedPost[], which needs to be mapped to MapSentimentPoint[]
   processedPosts: ProcessedPost[];
-  selectedTopic?: string; // To filter or display
+  selectedTopic?: string;
+  selectedTeam?: string; // For heatmap
 }
 
-// Define the structure for points on the map
-interface MapSentimentPoint {
+// This interface is what DynamicMap will expect.
+// It's derived from ProcessedPost but ensures coordinates are present.
+export interface MapPoint {
   id: string;
-  topic?: string;
-  region: string;
-  sentiment: number;
-  coordinates: [number, number];
-  text?: string;
+  latitude: number;
+  longitude: number;
+  sentimentScore: number;
+  displayText: string; // For popup: post text or location name
+  locationDisplayName?: string | null;
 }
 
 const InteractiveMap: React.FC<InteractiveMapProps> = ({ processedPosts, selectedTopic }) => {
-  // Dynamically import the Map component, ensuring it's only loaded on the client-side
   const DynamicMap = useMemo(() =>
-    dynamic(() => import('./DynamicMap'), {
-      ssr: false, // Disable server-side rendering for this component
-      loading: () => <p className="text-center p-4">Loading map...</p>, // Optional loading indicator
+    dynamic(() => import('./DynamicMap'), { // Assuming DynamicMap is in the same directory
+      ssr: false,
+      loading: () => <p className="text-center p-4">Loading map...</p>,
     }),
   []);
 
-  // Transform ProcessedPost[] to MapSentimentPoint[]
-  // This is a crucial step: actual posts rarely have direct coordinates.
-  // We need a strategy:
-  // 1. Use geolocation from Twitter API if available (requires user permission, often sparse).
-  // 2. Use NLP to extract locations mentioned in text (complex).
-  // 3. For this example, we'll use the 'user.location' if available from Twitter (often unreliable/freeform)
-  //    OR map known regions/countries from mockRegionCoordinates.
-  //    A more robust solution would involve a geocoding service or more detailed location data.
+  // Transform ProcessedPost[] to MapPoint[] for the map
+  // Only include posts that have valid latitude and longitude
+  const mapPoints: MapPoint[] = useMemo(() => {
+    return processedPosts
+      .filter(post => typeof post.latitude === 'number' && typeof post.longitude === 'number')
+      .map(post => {
+        let sentimentScore = 0;
+        const sentiment = post.sentiment as SentimentResult[] | { error: string; label: string; score: number };
 
-  const mapData: MapSentimentPoint[] = processedPosts
-    .map(post => {
-      // Attempt to get coordinates
-      // This is highly dependent on actual data structure from Twitter API via DataProcessorService
-      // For now, let's assume 'post.user?.location' might give a hint or we use a default.
-      // Or, if the post itself has geo data (e.g. from tweet.geo.place_id then expanded)
-
-      let coordinates: [number, number] | undefined = undefined;
-      let regionName = 'Unknown Region';
-
-      // Simplistic region detection (replace with robust geocoding/location extraction)
-      if (post.user) { // Assuming post.user might be a string like a country name for this mock
-          const userLocation = post.user.toLowerCase(); // If user location is a string
-          for (const key in mockRegionCoordinates) {
-              if (userLocation.includes(key.toLowerCase())) {
-                  coordinates = mockRegionCoordinates[key];
-                  regionName = key;
-                  break;
-              }
+        if (sentiment && Array.isArray(sentiment) && sentiment.length > 0) {
+          sentimentScore = sentiment[0].score;
+          if (sentiment[0].label === 'NEGATIVE' || sentiment[0].label === 'LABEL_0') {
+            sentimentScore = -sentimentScore;
+          } else if (sentiment[0].label === 'NEUTRAL' || sentiment[0].label === 'LABEL_1') {
+            sentimentScore = 0;
           }
+        } else if (sentiment && typeof (sentiment as { score: number })?.score === 'number') { // Check for error structure or other single object
+           // If it's an error object, or some other direct score, handle appropriately
+           // For now, if it's the error object, sentimentScore remains 0 or could be set to a specific value
+           if (!(sentiment as { error: string }).error) { // Not an error object
+             sentimentScore = (sentiment as { score: number }).score;
+           }
+        }
+        // else if (typeof post.sentiment === 'number') { // This case might be obsolete with new types
+        //   sentimentScore = post.sentiment;
+        // }
+
+        return {
+          id: post.id,
+          latitude: post.latitude!, // Asserting non-null due to filter
+          longitude: post.longitude!, // Asserting non-null due to filter
+          sentimentScore: sentimentScore,
+          displayText: post.text.substring(0, 100) + (post.text.length > 100 ? '...' : ''),
+          locationDisplayName: post.locationDisplayName
+        };
+      });
+  }, [processedPosts]);
+
+  const heatmapData = useMemo(() => {
+    if (selectedTopic !== "Sports" || !selectedTeam || selectedTeam.trim() === "" || mapPoints.length === 0) {
+      return null; // No heatmap if not sports, no team selected, or no map points
+    }
+
+    // For heatmap, we need [lat, lng, intensity]
+    // Intensity can be derived from positive sentiment for the selected team.
+    // This is a simplified aggregation. A real app might average sentiment or count posts.
+    const teamHeatmapPoints: [number, number, number][] = [];
+
+    processedPosts.forEach(post => {
+      // Check if the post is related to the selected team.
+      // This is a very basic check. Ideally, backend would filter by team, or NLP would confirm team relevance.
+      const postTextLower = post.text.toLowerCase();
+      const teamLower = selectedTeam.toLowerCase();
+
+      if (post.latitude != null && post.longitude != null && postTextLower.includes(teamLower)) {
+        let positiveSentimentScore = 0;
+        const sentiment = post.sentiment as SentimentResult[] | { error: string; label: string; score: number };
+
+        if (sentiment && Array.isArray(sentiment) && sentiment.length > 0) {
+          if (sentiment[0].label === 'POSITIVE' || sentiment[0].label === 'LABEL_2') {
+            positiveSentimentScore = sentiment[0].score;
+          }
+        } else if (sentiment && typeof (sentiment as { score: number })?.score === 'number') {
+           if (!(sentiment as { error: string }).error && (sentiment as any).label !== 'NEGATIVE' && (sentiment as any).label !== 'LABEL_0' && (sentiment as any).label !== 'NEUTRAL' && (sentiment as any).label !== 'LABEL_1') {
+             // Assuming if not explicitly negative/neutral, it might be positive (crude)
+             positiveSentimentScore = (sentiment as { score: number }).score;
+           }
+        }
+
+        if (positiveSentimentScore > 0.1) { // Only include points with some positive sentiment
+          teamHeatmapPoints.push([post.latitude, post.longitude, positiveSentimentScore * 100]); // Intensity scaled
+        }
       }
+    });
+    return teamHeatmapPoints.length > 0 ? teamHeatmapPoints : null;
+  }, [processedPosts, selectedTopic, selectedTeam, mapPoints]);
 
-      // Fallback if no coordinates found from user location
-      if (!coordinates) {
-        // Try to assign a random coordinate for demo if no region matches
-        // This is not ideal for real data.
-        const regions = Object.keys(mockRegionCoordinates);
-        const randomRegion = regions[Math.floor(Math.random() * regions.length)];
-        coordinates = mockRegionCoordinates[randomRegion];
-        regionName = randomRegion; // Assign the random region name
-      }
-
-      // Ensure sentiment is a number. The `analyze` result from transformers.js
-      // is usually an array like [{ label: 'POSITIVE', score: 0.99 }]
-      let sentimentScore = 0;
-      if (post.sentiment && Array.isArray(post.sentiment) && post.sentiment.length > 0) {
-        sentimentScore = post.sentiment[0].score;
-        // Adjust score: RoBERTa model for sentiment often gives POSITIVE, NEGATIVE, NEUTRAL.
-        // We might want to map these to a numeric range, e.g. NEGATIVE: -score, POSITIVE: +score
-        if (post.sentiment[0].label === 'NEGATIVE' || post.sentiment[0].label === 'LABEL_0') sentimentScore = -sentimentScore;
-        else if (post.sentiment[0].label === 'NEUTRAL' || post.sentiment[0].label === 'LABEL_1') sentimentScore = 0; // Or a small value
-        // LABEL_2 is often POSITIVE for cardiffnlp model
-      } else if (typeof post.sentiment === 'number') { // If it's somehow already a number
-        sentimentScore = post.sentiment;
-      }
-
-
-      return {
-        id: post.id,
-        topic: selectedTopic || post.eventType, // Or derive from post data
-        region: regionName, // Use determined region name
-        sentiment: sentimentScore,
-        coordinates: coordinates!, // Asserting coordinates is found due to fallback
-        text: post.text,
-      };
-    })
-    .filter(point => point.coordinates); // Ensure we only try to render points with coordinates
 
   return (
-    <div className="border rounded shadow-lg bg-gray-50 h-[500px] p-1"> {/* Ensure parent has height */}
+    <div className="border rounded shadow-lg bg-gray-50 h-[500px] p-1">
       <h2 className="text-xl font-semibold mb-2 text-center">
         Live Sentiment Map ({selectedTopic || 'All Topics'})
+        {selectedTopic === "Sports" && selectedTeam && ` - Team: ${selectedTeam}`}
       </h2>
-      {mapData.length === 0 && !dynamic(() => Promise.resolve(true), { ssr: false }) && ( // Check to prevent flash of "No data" while map loads
-         <p className="text-center p-4">No data points to display on the map for &quot;{selectedTopic}&quot;.</p>
+      {mapPoints.length === 0 && (
+         <p className="text-center p-4">No geocoded data points to display on the map for &quot;{selectedTopic}&quot;.</p>
       )}
-      <DynamicMap data={mapData} />
+      {mapPoints.length > 0 && <DynamicMap points={mapPoints} heatmapData={heatmapData} />}
     </div>
   );
 };

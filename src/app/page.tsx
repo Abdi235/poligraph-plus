@@ -119,7 +119,11 @@ export default function Home() {
           {isLoadingPosts && <p className="text-center p-4">Loading map data...</p>}
           {postsError && <p className="text-center text-red-500 p-4">Error loading map data: {postsError}</p>}
           {!isLoadingPosts && !postsError && (
-            <InteractiveMap processedPosts={processedPosts} selectedTopic={selectedTopic} />
+            <InteractiveMap
+              processedPosts={processedPosts}
+              selectedTopic={selectedTopic}
+              selectedTeam={selectedTopic === "Sports" ? sportsFilters.team : undefined}
+            />
           )}
         </div>
         <div className="lg:col-span-1 space-y-6">
