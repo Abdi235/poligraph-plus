@@ -4,6 +4,12 @@ import SentimentAnalysisService from './sentimentAnalysis';
 import KeywordExtractionService from './keywordExtraction';
 import EventClassificationService from './eventClassification';
 
+// Define a more specific type for sentiment analysis results
+export interface SentimentResult {
+  label: string;
+  score: number;
+}
+
 export interface ProcessedPost {
   id: string;
   text: string;
@@ -12,7 +18,7 @@ export interface ProcessedPost {
   name?: string; // Twitter display name
   profileImageUrl?: string;
   timestamp: string;
-  sentiment?: any;
+  sentiment?: SentimentResult[] | { error: string; label: string; score: number }; // More specific type
   keywords?: string[];
   eventType?: string;
   // Geolocation etc. can be added later

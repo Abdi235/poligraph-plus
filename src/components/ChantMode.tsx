@@ -10,11 +10,11 @@ interface ChantModeProps {
 }
 
 const ChantMode: React.FC<ChantModeProps> = ({ selectedTopic, processedPosts, isVisible }) => {
-  if (!isVisible) {
-    return null;
-  }
-
+  // Call useMemo unconditionally at the top level of the component
   const popularChants = useMemo(() => {
+    // If the component isn't visible or there are no posts,
+    // we can still compute an empty array or default value.
+    // The actual rendering of these chants will be skipped if !isVisible.
     if (!processedPosts || processedPosts.length === 0) {
       return [];
     }
@@ -56,7 +56,7 @@ const ChantMode: React.FC<ChantModeProps> = ({ selectedTopic, processedPosts, is
               key={`${chant.text}-${index}`}
               className="p-2 bg-white rounded shadow-sm text-purple-600 italic text-center flex justify-between items-center"
             >
-              <span>"{chant.text}"</span>
+              <span>&quot;{chant.text}&quot;</span>
               <span className="text-xs text-purple-400 ml-2">(freq: {chant.freq})</span>
             </li>
           ))}

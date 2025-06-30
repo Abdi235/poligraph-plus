@@ -7,6 +7,15 @@ const EVENT_MODEL_NAME = 'Xenova/distilbert-base-mnli';
 const EVENT_TASK: PipelineType = 'zero-shot-classification';
 const CANDIDATE_LABELS = ['Sports', 'Politics', 'News', 'Technology', 'Entertainment', 'Finance', 'General'];
 
+interface PipelineProgressStatus {
+  status: string;
+  name: string;
+  file: string;
+  progress: number;
+  loaded: number;
+  total: number;
+}
+
 class EventClassificationService {
   private static instance: EventClassificationService;
   private classifier: Pipeline | null = null;
@@ -28,8 +37,8 @@ class EventClassificationService {
       console.log(`Initializing event classification model: ${EVENT_MODEL_NAME}`);
       this.classifier = await pipeline(EVENT_TASK, EVENT_MODEL_NAME, {
         quantized: true, // Attempt to load a quantized version
-        progress_callback: (progress: any) => {
-          console.log(`Event model (${EVENT_MODEL_NAME}) loading:`, progress);
+        progress_callback: (progress: PipelineProgressStatus) => {
+          console.log(`Event model (${EVENT_MODEL_NAME}) loading: status: ${progress.status}, file: ${progress.file}, progress: ${progress.progress}%`);
         },
       });
       console.log(`Event classification model ${EVENT_MODEL_NAME} loaded successfully.`);

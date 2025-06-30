@@ -5,6 +5,15 @@ import { pipeline, Pipeline, PipelineType } from '@xenova/transformers';
 const KEYWORD_MODEL_NAME = 'Xenova/bert-base-NER';
 const KEYWORD_TASK: PipelineType = 'token-classification';
 
+interface PipelineProgressStatus {
+  status: string;
+  name: string;
+  file: string;
+  progress: number;
+  loaded: number;
+  total: number;
+}
+
 interface NerToken {
   entity_group: string;
   score: number;
@@ -34,8 +43,8 @@ class KeywordExtractionService {
       console.log(`Initializing keyword extraction model: ${KEYWORD_MODEL_NAME}`);
       this.extractor = await pipeline(KEYWORD_TASK, KEYWORD_MODEL_NAME, {
         quantized: true, // Attempt to load a quantized version
-        progress_callback: (progress: any) => {
-          console.log(`Keyword model (${KEYWORD_MODEL_NAME}) loading:`, progress);
+        progress_callback: (progress: PipelineProgressStatus) => {
+          console.log(`Keyword model (${KEYWORD_MODEL_NAME}) loading: status: ${progress.status}, file: ${progress.file}, progress: ${progress.progress}%`);
         },
       });
       console.log(`Keyword extraction model ${KEYWORD_MODEL_NAME} loaded successfully.`);

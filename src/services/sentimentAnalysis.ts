@@ -5,6 +5,15 @@ const SENTIMENT_MODEL_NAME = 'cardiffnlp/twitter-roberta-base-sentiment';
 // It's good practice to explicitly define the task if known, though pipeline often infers it.
 const SENTIMENT_TASK: PipelineType = 'text-classification';
 
+interface PipelineProgressStatus {
+  status: string;
+  name: string;
+  file: string;
+  progress: number;
+  loaded: number;
+  total: number;
+}
+
 class SentimentAnalysisService {
   private static instance: SentimentAnalysisService;
   private classifier: Pipeline | null = null;
@@ -29,8 +38,8 @@ class SentimentAnalysisService {
       // Load the specific sentiment analysis model
       this.classifier = await pipeline(SENTIMENT_TASK, SENTIMENT_MODEL_NAME, {
         quantized: true, // Attempt to load a quantized version
-        progress_callback: (progress: any) => {
-          console.log(`Sentiment model (${SENTIMENT_MODEL_NAME}) loading:`, progress);
+        progress_callback: (progress: PipelineProgressStatus) => {
+          console.log(`Sentiment model (${SENTIMENT_MODEL_NAME}) loading: status: ${progress.status}, file: ${progress.file}, progress: ${progress.progress}%`);
         },
       });
       console.log(`Sentiment analysis model ${SENTIMENT_MODEL_NAME} loaded successfully.`);

@@ -1,8 +1,10 @@
 "use client"; // This component will be client-side
 
 import React from 'react';
-import { MapContainer, TileLayer, Marker, Popup, CircleMarker } from 'react-leaflet';
-import L from 'leaflet'; // Import L for custom icons or other Leaflet functionalities if needed
+// Marker and L are not used directly in the current implementation
+// import L from 'leaflet';
+import { MapContainer, TileLayer, Popup, CircleMarker } from 'react-leaflet';
+
 
 // Mock sentiment data structure for map points
 interface MapSentimentPoint {

@@ -1,14 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from 'react'; // useEffect and useState might not be needed if all data comes via props
+import React from 'react'; // Removed useEffect, useState
 import { ProcessedPost } from '@/services/dataProcessor';
-// DataProcessorService import might not be needed if PostFeed doesn't fetch its own data
 import Image from 'next/image';
 
 interface PostFeedProps {
-  query?: string; // Can be used for display purposes or if there's still some internal filtering
+  query?: string;
   initialPosts: ProcessedPost[];
-  isLoading: boolean;
+  isLoading: boolean; // This prop will now be used
   error: string | null;
   maxPosts?: number;
 }
@@ -16,13 +15,11 @@ interface PostFeedProps {
 const PostFeed: React.FC<PostFeedProps> = ({
   query,
   initialPosts,
-  isLoading,
+  isLoading, // Destructured and will be used
   error,
   maxPosts = 10
 }) => {
 
-  // Posts are now primarily controlled by the parent through initialPosts.
-  // If you want PostFeed to still be able to slice or further process, you can use useState/useEffect based on initialPosts.
   const postsToDisplay = initialPosts.slice(0, maxPosts);
 
   const getSentimentColor = (sentimentScore: number): string => {
@@ -36,14 +33,14 @@ const PostFeed: React.FC<PostFeedProps> = ({
   return (
     <div className="p-4 border rounded shadow-lg bg-gray-50">
       <h2 className="text-xl font-semibold mb-4 text-center">Live Post Feed (Twitter)</h2>
-      {loading && <p className="text-center">Loading posts...</p>}
-      {error && <p className="text-center text-red-500">Error: {error}</p>}
-      {!loading && !error && posts.length === 0 && (
-        <p className="text-center text-gray-500">No posts to display for "{query}". Make sure API keys are set.</p>
+      {isLoading && <p className="text-center">Loading posts...</p>}
+      {error && !isLoading && <p className="text-center text-red-500">Error: {error}</p>}
+      {!isLoading && !error && postsToDisplay.length === 0 && (
+        <p className="text-center text-gray-500">No posts to display for &quot;{query}&quot;. Make sure API keys are set.</p>
       )}
-      {!loading && !error && posts.length > 0 && (
+      {!isLoading && !error && postsToDisplay.length > 0 && (
         <div className="space-y-3 max-h-[600px] overflow-y-auto">
-          {posts.map(post => (
+          {postsToDisplay.map(post => (
             <div key={post.id} className="p-3 rounded-lg shadow-sm bg-white">
               <div className="flex items-start space-x-3">
                 {post.profileImageUrl && (

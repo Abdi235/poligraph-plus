@@ -56,13 +56,17 @@ export default function Home() {
           setTimeout(() => setLatestSpike(null), 10000); // Clear after 10 seconds
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching page-level posts:", error);
-      setPostsError(error.message || "Failed to load posts.");
+      if (error instanceof Error) {
+        setPostsError(error.message);
+      } else {
+        setPostsError("An unknown error occurred while fetching posts.");
+      }
     } finally {
       setIsLoadingPosts(false);
     }
-  }, [selectedTopic, sportsFilters, timeRange, spikeAlertService]); // Added spikeAlertService to dependencies
+  }, [selectedTopic, sportsFilters, spikeAlertService]); // Removed timeRange, as it's not directly used by fetchAndProcessData
 
   useEffect(() => {
     fetchAndProcessData();

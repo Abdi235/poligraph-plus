@@ -8,6 +8,7 @@ describe('SpikeAlertService', () => {
   beforeEach(() => {
     service = SpikeAlertService.getInstance();
     // Reset history for the singleton instance for isolated tests
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).sentimentHistory = {};
   });
 
@@ -29,14 +30,17 @@ describe('SpikeAlertService', () => {
 
   it('should correctly calculate average sentiment', () => {
     const postsPositive = createMockPosts(0.5, 10);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const avgPositive = (service as any).calculateAverageSentiment(postsPositive);
     expect(avgPositive).toBeCloseTo(0.5);
 
     const postsNegative = createMockPosts(-0.8, 5);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const avgNegative = (service as any).calculateAverageSentiment(postsNegative);
     expect(avgNegative).toBeCloseTo(-0.8);
 
     const postsNeutral = createMockPosts(0, 5); // score 0, label LABEL_1 (Neutral)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const avgNeutral = (service as any).calculateAverageSentiment(postsNeutral);
     expect(avgNeutral).toBeCloseTo(0);
   });
@@ -70,12 +74,14 @@ describe('SpikeAlertService', () => {
   it('should handle history length correctly', () => {
     const historyKey = 'HistoryTest';
     // Clear history for this specific test key if needed, though beforeEach does it globally
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (service as any).sentimentHistory[historyKey] = [];
 
     for(let i=0; i<5; i++) {
         service.checkForSpike(historyKey, createMockPosts(0.1 + i*0.01, 2));
     }
     // SENTIMENT_HISTORY_LENGTH is 3 in SpikeAlertService
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((service as any).sentimentHistory[historyKey]?.length).toBe(3);
   });
 

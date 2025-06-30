@@ -117,7 +117,7 @@ const InteractiveMap: React.FC<InteractiveMapProps> = ({ processedPosts, selecte
         Live Sentiment Map ({selectedTopic || 'All Topics'})
       </h2>
       {mapData.length === 0 && !dynamic(() => Promise.resolve(true), { ssr: false }) && ( // Check to prevent flash of "No data" while map loads
-         <p className="text-center p-4">No data points to display on the map for "{selectedTopic}".</p>
+         <p className="text-center p-4">No data points to display on the map for &quot;{selectedTopic}&quot;.</p>
       )}
       <DynamicMap data={mapData} />
     </div>

@@ -12,6 +12,8 @@ class RedditApiService {
     return RedditApiService.instance;
   }
 
+  // Commenting out as Reddit integration is currently deferred
+  /*
   public async fetchRedditPosts(subreddit: string, limit: number = 10): Promise<any[]> {
     console.log(`Fetching posts from subreddit: r/${subreddit}, limit: ${limit}`);
     // Simulate API call
@@ -33,6 +35,7 @@ class RedditApiService {
       source: 'Reddit'
     }));
   }
+  */
 }
 
 export default RedditApiService;
