@@ -1,103 +1,95 @@
-import Image from "next/image";
+"use client";
+
+import { useTopic } from '@/context/TopicContext';
+import InteractiveMap from '@/components/InteractiveMap';
+import TimelineSlider from '@/components/TimelineSlider';
+import TrendBoard from '@/components/TrendBoard';
+import PostFeed from '@/components/PostFeed';
+import SportsFilters from '@/components/SportsFilters';
+import FanBaseHeatmap from '@/components/FanBaseHeatmap';
+import ChantMode from '@/components/ChantMode'; // Import ChantMode
+import { mockSentimentData, mockTrendData } from '@/data/mockData';
+import { useState } from 'react';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const { selectedTopic } = useTopic();
+  const [timeRange, setTimeRange] = useState<{ startDate: Date, endDate: Date }>({
+    startDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+    endDate: new Date(),
+  });
+  const [sportsFilters, setSportsFilters] = useState({ league: '', team: '', player: '', event: '' });
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleDateChange = (startDate: Date, endDate: Date) => {
+    setTimeRange({ startDate, endDate });
+    console.log("Time range updated:", startDate, endDate);
+    // TODO: Refetch or filter data
+  };
+
+  const handleSportsFilterChange = (filters: { league: string; team: string; player: string; event: string }) => {
+    setSportsFilters(filters);
+    console.log("Sports filters updated:", filters);
+    // TODO: Refetch or filter data
+  };
+
+  // Mock filtering
+  const filteredSentimentData = mockSentimentData.filter(item =>
+    item.topic.toLowerCase() === selectedTopic.toLowerCase() &&
+    item.timestamp >= timeRange.startDate.getTime() &&
+    item.timestamp <= timeRange.endDate.getTime() &&
+    (selectedTopic !== "Sports" || (
+      (sportsFilters.league ? item.text?.toLowerCase().includes(sportsFilters.league.toLowerCase()) : true) &&
+      (sportsFilters.team ? item.text?.toLowerCase().includes(sportsFilters.team.toLowerCase()) : true) &&
+      (sportsFilters.player ? item.text?.toLowerCase().includes(sportsFilters.player.toLowerCase()) : true) &&
+      (sportsFilters.event ? item.text?.toLowerCase().includes(sportsFilters.event.toLowerCase()) : true)
+    ))
+  );
+
+  const filteredTrendData = mockTrendData.filter(item =>
+    item.topic.toLowerCase() === selectedTopic.toLowerCase() &&
+    (selectedTopic !== "Sports" || (
+      (sportsFilters.league ? item.trend.toLowerCase().includes(sportsFilters.league.toLowerCase()) : true) &&
+      (sportsFilters.team ? item.trend.toLowerCase().includes(sportsFilters.team.toLowerCase()) : true) &&
+      (sportsFilters.player ? item.trend.toLowerCase().includes(sportsFilters.player.toLowerCase()) : true) &&
+      (sportsFilters.event ? item.trend.toLowerCase().includes(sportsFilters.event.toLowerCase()) : true)
+    ))
+  );
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-3xl font-bold text-center my-4">
+        PoliGraph+ Dashboard: <span className="text-blue-600">{selectedTopic}</span>
+      </h1>
+
+      <SportsFilters
+        onFilterChange={handleSportsFilterChange}
+        isVisible={selectedTopic === "Sports"}
+      />
+
+      <FanBaseHeatmap
+        selectedTeam={sportsFilters.team}
+        isVisible={selectedTopic === "Sports" && !!sportsFilters.team}
+      />
+
+      <ChantMode selectedTopic={selectedTopic} isVisible={true} /> {/* ChantMode can be always visible or context-dependent */}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <InteractiveMap selectedTopic={selectedTopic} data={filteredSentimentData} />
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        <div className="lg:col-span-1 space-y-6">
+          <TrendBoard selectedTopic={selectedTopic} data={filteredTrendData} />
+          <TimelineSlider onDateChange={handleDateChange} />
+        </div>
+      </div>
+
+      <div>
+        <PostFeed query={selectedTopic} />
+      </div>
+
+      <div className="p-4 border rounded shadow-lg bg-yellow-100 text-yellow-800">
+        <h2 className="text-xl font-semibold mb-2 text-center">🔥 Spike Alerts (Placeholder)</h2>
+        <p className="text-center">Significant sentiment shift detected for "Player X" in "Sports"!</p>
+      </div>
     </div>
   );
 }
