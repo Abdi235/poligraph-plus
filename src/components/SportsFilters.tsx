@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState }_from 'react';
+import React, { useState } from 'react';
 
 interface SportsFiltersProps {
   onFilterChange: (filters: { league: string; team: string; player: string; event: string }) => void;
