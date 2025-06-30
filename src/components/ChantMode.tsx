@@ -1,49 +1,69 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
+import { ProcessedPost } from '@/services/dataProcessor';
 
 interface ChantModeProps {
-  selectedTopic?: string; // Could be used to fetch topic-specific chants
-  isVisible: boolean;    // To show/hide based on context
+  selectedTopic?: string;
+  processedPosts: ProcessedPost[]; // Receive processed posts from parent
+  isVisible: boolean;
 }
 
-const ChantMode: React.FC<ChantModeProps> = ({ selectedTopic, isVisible }) => {
+const ChantMode: React.FC<ChantModeProps> = ({ selectedTopic, processedPosts, isVisible }) => {
   if (!isVisible) {
     return null;
   }
 
-  // Mock chant data - in a real app, this would come from keyword/phrase extraction
-  const mockChants = [
-    { id: '1', text: "We the North!", topic: "Sports", relevance: 0.9 },
-    { id: '2', text: "Messi is GOAT", topic: "Sports", relevance: 0.85 },
-    { id: '3', text: "Defense! Defense!", topic: "Sports", relevance: 0.7 },
-    { id: '4', text: "Vote Now!", topic: "Politics", relevance: 0.9 },
-    { id: '5', text: "Breaking News Update", topic: "News", relevance: 0.8 },
-  ];
+  const popularChants = useMemo(() => {
+    if (!processedPosts || processedPosts.length === 0) {
+      return [];
+    }
 
-  const relevantChants = mockChants.filter(
-    chant => chant.topic.toLowerCase() === selectedTopic?.toLowerCase()
-  ).sort((a,b) => b.relevance - a.relevance).slice(0,3); // Show top 3
+    const keywordFrequency: { [key: string]: number } = {};
+
+    processedPosts.forEach(post => {
+      // Assuming post.keywords is an array of strings from KeywordExtractionService
+      if (post.keywords && Array.isArray(post.keywords)) {
+        post.keywords.forEach(keyword => {
+          // Simple cleaning: convert to lower case, ignore very short keywords/hashtags
+          const cleanKeyword = keyword.toLowerCase().trim();
+          if (cleanKeyword.length < 3) return;
+          // Optional: filter out generic words or apply more sophisticated filtering
+          // For hashtags, they usually start with #. NER might pick them up.
+
+          keywordFrequency[cleanKeyword] = (keywordFrequency[cleanKeyword] || 0) + 1;
+        });
+      }
+    });
+
+    // Sort keywords by frequency
+    const sortedKeywords = Object.entries(keywordFrequency)
+      .sort(([, freqA], [, freqB]) => freqB - freqA)
+      .map(([text, freq]) => ({ text, freq }));
+
+    return sortedKeywords.slice(0, 5); // Return top 5 most frequent keywords/phrases
+  }, [processedPosts]);
 
   return (
     <div className="p-4 border rounded shadow-lg bg-purple-50">
-      <h3 className="text-lg font-semibold mb-3 text-center text-purple-700">📣 Chant Mode (Optional/Fun)</h3>
-      {relevantChants.length === 0 ? (
-        <p className="text-center text-gray-500">No popular chants/phrases detected for {selectedTopic}.</p>
+      <h3 className="text-lg font-semibold mb-3 text-center text-purple-700">📣 Trending Phrases/Keywords</h3>
+      {popularChants.length === 0 ? (
+        <p className="text-center text-gray-500">No significant phrases/keywords detected for {selectedTopic}.</p>
       ) : (
         <ul className="space-y-2">
-          {relevantChants.map(chant => (
+          {popularChants.map((chant, index) => (
             <li
-              key={chant.id}
-              className="p-2 bg-white rounded shadow-sm text-purple-600 italic text-center"
+              key={`${chant.text}-${index}`}
+              className="p-2 bg-white rounded shadow-sm text-purple-600 italic text-center flex justify-between items-center"
             >
-              "{chant.text}"
+              <span>"{chant.text}"</span>
+              <span className="text-xs text-purple-400 ml-2">(freq: {chant.freq})</span>
             </li>
           ))}
         </ul>
       )}
        <p className="text-xs text-gray-400 mt-3 text-center">
-        Highlights frequent catchphrases or hashtags by fans.
+        Highlights frequent phrases or keywords from recent posts.
       </p>
     </div>
   );

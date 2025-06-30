@@ -1,5 +1,5 @@
-import TwitterApiService from './twitterApi';
-import RedditApiService from './redditApi';
+import TwitterApiService, { ProcessedTweet } from './twitterApi';
+// RedditApiService removed for now
 import SentimentAnalysisService from './sentimentAnalysis';
 import KeywordExtractionService from './keywordExtraction';
 import EventClassificationService from './eventClassification';
@@ -7,35 +7,32 @@ import EventClassificationService from './eventClassification';
 export interface ProcessedPost {
   id: string;
   text: string;
-  source: 'Twitter' | 'Reddit' | string;
-  user?: string; // Twitter user, Reddit author
+  source: 'Twitter' | string; // Only Twitter for now
+  user?: string; // Twitter username
+  name?: string; // Twitter display name
+  profileImageUrl?: string;
   timestamp: string;
-  sentiment?: any; // Result from sentiment analysis
+  sentiment?: any;
   keywords?: string[];
-  eventType?: string; // Result from event classification
-  // Add other relevant fields like geolocation if available later
+  eventType?: string;
+  // Geolocation etc. can be added later
 }
 
 class DataProcessorService {
   private static instance: DataProcessorService;
   private twitterApi: TwitterApiService;
-  private redditApi: RedditApiService;
-  private sentimentService: SentimentAnalysisService | null = null;
+  private sentimentService: SentimentAnalysisService; // No longer nullable
   private keywordService: KeywordExtractionService;
   private eventService: EventClassificationService;
 
   private constructor() {
     this.twitterApi = TwitterApiService.getInstance();
-    this.redditApi = RedditApiService.getInstance();
+    this.sentimentService = SentimentAnalysisService.getInstance(); // Get instance sync
     this.keywordService = KeywordExtractionService.getInstance();
     this.eventService = EventClassificationService.getInstance();
-    this.initSentimentService();
+    // The SentimentAnalysisService constructor now handles initiating model loading.
+    // Its analyze() method will await the loading promise.
   }
-
-  private async initSentimentService() {
-    this.sentimentService = await SentimentAnalysisService.getInstance();
-  }
-
 
   public static getInstance(): DataProcessorService {
     if (!DataProcessorService.instance) {
@@ -44,46 +41,54 @@ class DataProcessorService {
     return DataProcessorService.instance;
   }
 
-  public async fetchDataAndProcess(query: string, sources: ('Twitter' | 'Reddit')[] = ['Twitter', 'Reddit']): Promise<ProcessedPost[]> {
-    let rawPosts: any[] = [];
+  public async fetchDataAndProcess(query: string, sources: ('Twitter')[] = ['Twitter']): Promise<ProcessedPost[]> {
+    let fetchedTweets: ProcessedTweet[] = [];
 
     if (sources.includes('Twitter')) {
-      const tweets = await this.twitterApi.fetchTweets(query);
-      rawPosts = rawPosts.concat(tweets);
-    }
-    if (sources.includes('Reddit')) {
-      // Assuming query can be used as a subreddit for now, or a general keyword search
-      const redditPosts = await this.redditApi.fetchRedditPosts(query);
-      rawPosts = rawPosts.concat(redditPosts);
-    }
-
-    if (!this.sentimentService) {
-        await this.initSentimentService(); // Ensure service is initialized
-    }
-
-    if (!this.sentimentService) {
-        console.error("Sentiment service failed to initialize.");
-        return []; // Or handle error appropriately
+      try {
+        fetchedTweets = await this.twitterApi.fetchTweets(query);
+      } catch (error) {
+        console.error("Error fetching tweets in DataProcessorService:", error);
+        return [];
+      }
     }
 
     const processedPosts: ProcessedPost[] = [];
-    for (const post of rawPosts) {
-      const textToAnalyze = post.text || post.title || '';
+    for (const tweet of fetchedTweets) {
+      const textToAnalyze = tweet.text || '';
 
       let sentiment = null;
-      if (this.sentimentService) { // Check again due to async init
-          sentiment = await this.sentimentService.analyze(textToAnalyze);
+      try {
+        // The analyze method in SentimentAnalysisService will now internally await model readiness.
+        sentiment = await this.sentimentService.analyze(textToAnalyze);
+      } catch (e) {
+        console.error(`Sentiment analysis failed for tweet ${tweet.id}:`, e);
+        // Set a default/error sentiment structure if needed
+        sentiment = { error: 'Analysis failed', label: 'neutral', score: 0 };
       }
 
-      const keywords = await this.keywordService.extract(textToAnalyze);
-      const eventType = await this.eventService.classify(textToAnalyze);
+      let keywords: string[] = [];
+      try {
+        keywords = await this.keywordService.extract(textToAnalyze);
+      } catch(e) {
+        console.error(`Keyword extraction failed for tweet ${tweet.id}:`, e);
+      }
+
+      let eventType = 'Other';
+      try {
+        eventType = await this.eventService.classify(textToAnalyze);
+      } catch(e) {
+        console.error(`Event classification failed for tweet ${tweet.id}:`, e);
+      }
 
       processedPosts.push({
-        id: post.id,
+        id: tweet.id,
         text: textToAnalyze,
-        source: post.source,
-        user: post.user || post.author,
-        timestamp: post.timestamp,
+        source: tweet.source,
+        user: tweet.user,
+        name: tweet.name,
+        profileImageUrl: tweet.profileImageUrl,
+        timestamp: tweet.timestamp,
         sentiment,
         keywords,
         eventType,

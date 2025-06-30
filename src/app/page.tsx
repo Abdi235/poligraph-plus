@@ -7,9 +7,11 @@ import TrendBoard from '@/components/TrendBoard';
 import PostFeed from '@/components/PostFeed';
 import SportsFilters from '@/components/SportsFilters';
 import FanBaseHeatmap from '@/components/FanBaseHeatmap';
-import ChantMode from '@/components/ChantMode'; // Import ChantMode
-import { mockSentimentData, mockTrendData } from '@/data/mockData';
-import { useState } from 'react';
+import ChantMode from '@/components/ChantMode';
+import { mockTrendData } from '@/data/mockData';
+import DataProcessorService, { ProcessedPost } from '@/services/dataProcessor';
+import SpikeAlertService, { SentimentSpike } from '@/services/spikeAlertService'; // Import SpikeAlertService
+import { useState, useEffect, useCallback } from 'react';
 
 export default function Home() {
   const { selectedTopic } = useTopic();
@@ -19,39 +21,64 @@ export default function Home() {
   });
   const [sportsFilters, setSportsFilters] = useState({ league: '', team: '', player: '', event: '' });
 
+  const [processedPosts, setProcessedPosts] = useState<ProcessedPost[]>([]);
+  const [isLoadingPosts, setIsLoadingPosts] = useState<boolean>(true);
+  const [postsError, setPostsError] = useState<string | null>(null);
+  const [latestSpike, setLatestSpike] = useState<SentimentSpike | null>(null); // State for spike alerts
+
+  const spikeAlertService = SpikeAlertService.getInstance();
+
+  // Effect to fetch posts when selectedTopic or relevant filters change
+  const fetchAndProcessData = useCallback(async () => {
+    if (!selectedTopic) {
+      setProcessedPosts([]);
+      setIsLoadingPosts(false);
+      return;
+    }
+    setIsLoadingPosts(true);
+    setPostsError(null);
+    try {
+      const dataProcessor = DataProcessorService.getInstance();
+      let query = selectedTopic;
+      if (selectedTopic === "Sports") {
+        const activeFilters = Object.values(sportsFilters).filter(f => f).join(" ");
+        if (activeFilters) query = `${query} ${activeFilters}`;
+      }
+      const data = await dataProcessor.fetchDataAndProcess(query, ['Twitter']);
+      setProcessedPosts(data);
+
+      // Check for spikes after fetching new data
+      if (data.length > 0) {
+        const spike = spikeAlertService.checkForSpike(selectedTopic, data);
+        if (spike) {
+          setLatestSpike(spike);
+          // Optional: clear spike message after some time
+          setTimeout(() => setLatestSpike(null), 10000); // Clear after 10 seconds
+        }
+      }
+    } catch (error: any) {
+      console.error("Error fetching page-level posts:", error);
+      setPostsError(error.message || "Failed to load posts.");
+    } finally {
+      setIsLoadingPosts(false);
+    }
+  }, [selectedTopic, sportsFilters, timeRange, spikeAlertService]); // Added spikeAlertService to dependencies
+
+  useEffect(() => {
+    fetchAndProcessData();
+  }, [fetchAndProcessData]);
+
+
   const handleDateChange = (startDate: Date, endDate: Date) => {
     setTimeRange({ startDate, endDate });
-    console.log("Time range updated:", startDate, endDate);
-    // TODO: Refetch or filter data
   };
 
   const handleSportsFilterChange = (filters: { league: string; team: string; player: string; event: string }) => {
     setSportsFilters(filters);
-    console.log("Sports filters updated:", filters);
-    // TODO: Refetch or filter data
   };
 
-  // Mock filtering
-  const filteredSentimentData = mockSentimentData.filter(item =>
-    item.topic.toLowerCase() === selectedTopic.toLowerCase() &&
-    item.timestamp >= timeRange.startDate.getTime() &&
-    item.timestamp <= timeRange.endDate.getTime() &&
-    (selectedTopic !== "Sports" || (
-      (sportsFilters.league ? item.text?.toLowerCase().includes(sportsFilters.league.toLowerCase()) : true) &&
-      (sportsFilters.team ? item.text?.toLowerCase().includes(sportsFilters.team.toLowerCase()) : true) &&
-      (sportsFilters.player ? item.text?.toLowerCase().includes(sportsFilters.player.toLowerCase()) : true) &&
-      (sportsFilters.event ? item.text?.toLowerCase().includes(sportsFilters.event.toLowerCase()) : true)
-    ))
-  );
-
   const filteredTrendData = mockTrendData.filter(item =>
-    item.topic.toLowerCase() === selectedTopic.toLowerCase() &&
-    (selectedTopic !== "Sports" || (
-      (sportsFilters.league ? item.trend.toLowerCase().includes(sportsFilters.league.toLowerCase()) : true) &&
-      (sportsFilters.team ? item.trend.toLowerCase().includes(sportsFilters.team.toLowerCase()) : true) &&
-      (sportsFilters.player ? item.trend.toLowerCase().includes(sportsFilters.player.toLowerCase()) : true) &&
-      (sportsFilters.event ? item.trend.toLowerCase().includes(sportsFilters.event.toLowerCase()) : true)
-    ))
+    item.topic.toLowerCase() === selectedTopic.toLowerCase()
   );
 
   return (
@@ -59,6 +86,17 @@ export default function Home() {
       <h1 className="text-3xl font-bold text-center my-4">
         PoliGraph+ Dashboard: <span className="text-blue-600">{selectedTopic}</span>
       </h1>
+
+      {/* Display Spike Alert */}
+      {latestSpike && (
+        <div className="p-4 mb-4 text-sm text-yellow-700 bg-yellow-100 rounded-lg shadow-md" role="alert">
+          <span className="font-medium">🔥 Sentiment Spike Alert!</span> {latestSpike.message}
+          <br />
+          <span className="text-xs">
+            (Previous: {latestSpike.previousSentiment.toFixed(2)}, Current: {latestSpike.currentSentiment.toFixed(2)}, Change: {latestSpike.change > 0 ? '+' : ''}{latestSpike.change.toFixed(2)})
+          </span>
+        </div>
+      )}
 
       <SportsFilters
         onFilterChange={handleSportsFilterChange}
@@ -70,11 +108,15 @@ export default function Home() {
         isVisible={selectedTopic === "Sports" && !!sportsFilters.team}
       />
 
-      <ChantMode selectedTopic={selectedTopic} isVisible={true} /> {/* ChantMode can be always visible or context-dependent */}
+      <ChantMode selectedTopic={selectedTopic} processedPosts={processedPosts} isVisible={true} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <InteractiveMap selectedTopic={selectedTopic} data={filteredSentimentData} />
+          {isLoadingPosts && <p className="text-center p-4">Loading map data...</p>}
+          {postsError && <p className="text-center text-red-500 p-4">Error loading map data: {postsError}</p>}
+          {!isLoadingPosts && !postsError && (
+            <InteractiveMap processedPosts={processedPosts} selectedTopic={selectedTopic} />
+          )}
         </div>
         <div className="lg:col-span-1 space-y-6">
           <TrendBoard selectedTopic={selectedTopic} data={filteredTrendData} />
@@ -83,13 +125,19 @@ export default function Home() {
       </div>
 
       <div>
-        <PostFeed query={selectedTopic} />
+        <PostFeed
+          initialPosts={processedPosts}
+          isLoading={isLoadingPosts}
+          error={postsError}
+          query={selectedTopic}
+        />
       </div>
 
-      <div className="p-4 border rounded shadow-lg bg-yellow-100 text-yellow-800">
+      {/* Placeholder for spike alerts can be removed if the above alert is sufficient for now */}
+      {/* <div className="p-4 border rounded shadow-lg bg-yellow-100 text-yellow-800">
         <h2 className="text-xl font-semibold mb-2 text-center">🔥 Spike Alerts (Placeholder)</h2>
         <p className="text-center">Significant sentiment shift detected for "Player X" in "Sports"!</p>
-      </div>
+      </div> */}
     </div>
   );
 }
