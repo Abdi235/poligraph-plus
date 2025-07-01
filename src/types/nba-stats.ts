@@ -51,7 +51,7 @@ export interface NBAPlayerStatsAPIResponse {
   parameters: {
     game: string;
   };
-  errors: any[]; // Or a more specific error type if known
+  errors: unknown[]; // Changed from any[] to unknown[] for better type safety
   results: number;
   response: NBAPlayerStatsItem[];
 }

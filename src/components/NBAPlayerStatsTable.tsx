@@ -1,5 +1,6 @@
 // src/components/NBAPlayerStatsTable.tsx
 import React from 'react';
+import Image from 'next/image'; // Import next/image
 import { NBAPlayerStatsItem } from '@/types/nba-stats';
 
 interface NBAPlayerStatsTableProps {
@@ -68,7 +69,15 @@ const NBAPlayerStatsTable: React.FC<NBAPlayerStatsTableProps> = ({ stats = mockS
   const renderTableForTeam = (teamName: string, teamStats: NBAPlayerStatsItem[]) => (
     <div key={teamName} className="mb-8">
       <div className="flex items-center mb-3">
-        {teamStats[0]?.team.logo && <img src={teamStats[0].team.logo} alt={`${teamName} logo`} className="h-8 w-8 mr-3 object-contain"/>}
+        {teamStats[0]?.team.logo && (
+          <Image
+            src={teamStats[0].team.logo}
+            alt={`${teamName} logo`}
+            width={32} // Corresponds to h-8 w-8
+            height={32}
+            className="mr-3 object-contain"
+          />
+        )}
         <h3 className="text-xl font-semibold text-slate-700">{teamName}</h3>
       </div>
       <div className="overflow-x-auto shadow-md rounded-lg">

@@ -1,5 +1,6 @@
 // src/components/NewsFeed.tsx
 import React from 'react';
+import Image from 'next/image'; // Import next/image
 
 interface NewsArticle {
   id: string;
@@ -74,7 +75,13 @@ const NewsFeed = () => {
           <a href={article.link || '#'} target="_blank" rel="noopener noreferrer" key={article.id} className="block p-3.5 bg-slate-50 rounded-lg hover:shadow-xl transition-all duration-300 ease-in-out border border-slate-200 group hover:border-orange-300">
             <div className="flex items-start space-x-4">
               {article.imageUrl && (
-                <img src={article.imageUrl} alt={article.title} className="w-28 h-24 object-cover rounded-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-105" />
+                <Image
+                  src={article.imageUrl}
+                  alt={article.title}
+                  width={112} // Corresponds to w-28 (28 * 4 = 112px)
+                  height={96} // Corresponds to h-24 (24 * 4 = 96px)
+                  className="object-cover rounded-lg flex-shrink-0 transition-transform duration-300 group-hover:scale-105"
+                />
               )}
               <div className="flex-grow">
                 {article.category && (
