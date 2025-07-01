@@ -1,103 +1,78 @@
-import Image from "next/image";
+import UpdatesFeed from "@/components/UpdatesFeed";
+import LiveGameScores from "@/components/LiveGameScores";
+import NewsFeed from "@/components/NewsFeed";
+import NBAPlayerStatsTable from "@/components/NBAPlayerStatsTable"; // Import the new component
+import { NBAPlayerStatsItem } from "@/types/nba-stats"; // Import the type for mock data
+
+// Mock data for NBAPlayerStatsTable (subset, real data would be fetched)
+// This is the same mock data used inside NBAPlayerStatsTable.tsx for now.
+// In a real scenario with client-side fetching in page.tsx, you'd fetch here.
+// Or, if NBAPlayerStatsTable fetches its own data, this import might not be needed here.
+const mockNbaStatsForPage: NBAPlayerStatsItem[] = [
+  {
+    player: { id: 734, firstname: "Dwayne", lastname: "Bacon" },
+    team: { id: 26, name: "Orlando Magic", nickname: "Magic", code: "ORL", logo: "https://upload.wikimedia.org/wikipedia/fr/b/bd/Orlando_Magic_logo_2010.png" },
+    game: { id: 8133 },
+    points: 14, pos: "SF", min: "21:56", fgm: 6, fga: 9, fgp: "66.7", ftm: 1, fta: 1, ftp: "100", tpm: 1, tpa: 3, tpp: "33.3",
+    offReb: 0, defReb: 2, totReb: 2, assists: 1, pFouls: 1, steals: 2, turnovers: 1, blocks: 0, plusMinus: "6", comment: null
+  },
+  {
+    player: { id: 1868, firstname: "De'Andre", lastname: "Hunter" },
+    team: { id: 1, name: "Atlanta Hawks", nickname: "Hawks", code: "ATL", logo: "https://upload.wikimedia.org/wikipedia/fr/e/ee/Hawks_2016.png" },
+    game: { id: 8133 },
+    points: 18, pos: "SF", min: "26:07", fgm: 5, fga: 10, fgp: "50.0", ftm: 6, fta: 8, ftp: "75.0", tpm: 2, tpa: 5, tpp: "40.0",
+    offReb: 1, defReb: 2, totReb: 3, assists: 0, pFouls: 3, steals: 0, turnovers: 1, blocks: 1, plusMinus: "-9", comment: null
+  },
+  // Add a DNP player to test that case from page level if needed
+  {
+    player: { id: 12, firstname: "Al-Farouq", lastname: "Aminu" },
+    team: { id: 26, name: "Orlando Magic", nickname: "Magic", code: "ORL", logo: "https://upload.wikimedia.org/wikipedia/fr/b/bd/Orlando_Magic_logo_2010.png" },
+    game: { id: 8133 },
+    points: null, pos: null, min: null, fgm: null, fga: null, fgp: null, ftm: null, fta: null, ftp: null, tpm: null, tpa: null, tpp: null,
+    offReb: null, defReb: null, totReb: null, assists: null, pFouls: null, steals: null, turnovers: null, blocks: null, plusMinus: null, comment: "DND - Injury / Illness"
+  }
+];
+
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const gameIdForStats = 8133; // Example Game ID
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  return (
+    <div className="space-y-8"> {/* Increased spacing between sections */}
+      <header className="bg-white shadow p-6 rounded-lg">
+        <h1 className="text-3xl font-bold text-gray-800">Welcome to PoliGraph Plus</h1>
+        <p className="text-gray-600 mt-1">Your central hub for the latest updates, live sports, and breaking news.</p>
+      </header>
+
+      {/* Main content grid - Feeds */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <section className="md:col-span-1">
+          <UpdatesFeed />
+        </section>
+        <section className="md:col-span-1">
+          <LiveGameScores />
+        </section>
+        <section className="md:col-span-1">
+          <NewsFeed />
+        </section>
+      </div>
+
+      {/* NBA Player Stats Section */}
+      <section className="mt-8"> {/* Added margin top for separation */}
+        {/*
+          The NBAPlayerStatsTable component is currently set up to use its own internal mock data
+          if no 'stats' prop is passed, OR it can use its conceptual useEffect to fetch.
+          For this step, we'll explicitly pass the gameId.
+          If we wanted this page to fetch and then pass data, we'd uncomment the data fetching logic here
+          (or use Next.js server components/route handlers for server-side fetching).
+        */}
+        <NBAPlayerStatsTable gameId={gameIdForStats} stats={mockNbaStatsForPage} />
+        {/*
+          Alternatively, if NBAPlayerStatsTable is fetching its own data based on gameId:
+          <NBAPlayerStatsTable gameId={gameIdForStats} />
+        */}
+      </section>
+
     </div>
   );
 }
